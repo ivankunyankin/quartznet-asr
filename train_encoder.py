@@ -14,9 +14,8 @@ import torch.nn.functional as F
 from IPython.display import clear_output
 from torch.utils.data import DataLoader
 
-from models import QuartzNet
 from dataset import LibriDataset
-from utils import TextTransform, save_spec, custom_collate
+from utils import TextTransform, save_spec, custom_collate, create_model
 
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -33,50 +32,60 @@ class Trainer:
 
     def __init__(self, config, rank, world_size, from_checkpoint, cash):
 
-        self.device = rank
+        self.device = rank if rank else "cpu"
         self.world_size = world_size
 
         # Parameters
-        hparams = config["encoder"]
-        self.batch_size = hparams["batch_size"]
-        self.checkpoint_dir = hparams["checkpoint_dir"]
+        self.batch_size = config["batch_size"]
+        self.checkpoint_dir = config["checkpoint_dir"]
         self.start_epoch = 1
-        self.epochs = hparams["epochs"] + 1
+        self.epochs = config["epochs"] + 1
 
         # Data
-        self.train_set = LibriDataset(config, "encoder", "train", cash)
-        self.val_set = LibriDataset(config, "encoder", "val", cash)
+        self.train_set = LibriDataset(config, "train", cash)
+        self.val_set = LibriDataset(config, "val", cash)
         self.train_loader = self.loader(self.train_set)
         self.val_loader = self.loader(self.val_set)
         self.processor = TextTransform()
 
         # Model
-        self.model = QuartzNet().to(self.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.device])
-        self.criterion = nn.CTCLoss(blank=28)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=float(hparams["learning_rate"]), weight_decay=float(hparams["weight_decay"]))
-        self.scheduler = self.oneCycleLR(hparams)
+        self.model = create_model(
+            model=config["model"],
+            in_channels=config["spec_params"]["n_mels"],
+            out_channels=len(self.processor.char_map)
+        )
+
+        if not self.device == "cpu":
+            self.model = DistributedDataParallel(self.model, device_ids=[self.device])
+
+        self.criterion = nn.CTCLoss(blank=len(self.processor.char_map)+1)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=float(config["learning_rate"]), weight_decay=float(config["weight_decay"]))
+        self.scheduler = self.oneCycleLR(config)
 
         if from_checkpoint:
 
-            map_location = {'cuda:%d' % 0: 'cuda:%d' % self.device}
-            self.load_checkpoint(self.checkpoint_dir, map_location)
+            if not self.device == "cpu":
+                map_location = {'cuda:%d' % 0: 'cuda:%d' % self.device}
+                self.load_checkpoint(self.checkpoint_dir, map_location)
+                print(f"=> Rank {self.device}. Loaded checkpoint")
+            else:
+                self.load_checkpoint(self.checkpoint_dir, map_location=self.device)
+                print("=> Loaded checkpoint")
 
             with open(os.path.join(self.checkpoint_dir, "last_epoch.txt"), "r") as f:
                 last_epoch = int(f.read())
                 last_batch_idx = last_epoch * len(self.train_loader) - 1
                 self.start_epoch = last_epoch + 1
-                self.scheduler = self.oneCycleLR(hparams, last_epoch=last_batch_idx)
+                self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
 
-            print(f"=> Rank {self.device}. Loaded checkpoint")
-
-        self.scaler = torch.cuda.amp.GradScaler()
+        if not self.device == "cpu":
+            self.scaler = torch.cuda.amp.GradScaler()
 
         # Logging
-        if self.device == 0:
+        if self.device == 0 or self.device == "cpu":
 
             now = datetime.datetime.now()
-            path = os.path.join(hparams["log_dir"], now.strftime("%Y:%m:%d_%H:%M:%S"))
+            path = os.path.join(config["log_dir"], now.strftime("%Y:%m:%d_%H:%M:%S"))
             self.checkpoint_path = os.path.join(self.checkpoint_dir, now.strftime("%Y:%m:%d_%H:%M:%S"))
             self.last_epoch_path = os.path.join(self.checkpoint_dir, "last_epoch.txt")
 
@@ -84,7 +93,7 @@ class Trainer:
             self.val_writer = SummaryWriter(os.path.join(path, "val"))
 
             with open(f"{path}/hparams.yml", "w") as f:
-                yaml.dump(hparams, f, default_flow_style=False)
+                yaml.dump(config, f, default_flow_style=False)
 
     def train(self):
 
@@ -94,14 +103,15 @@ class Trainer:
         for epoch in range(self.start_epoch, self.epochs):
 
             self.train_step(epoch)
-            dist.barrier()
+            if not self.device == "cpu":
+                dist.barrier()
 
             loss = self.val_step(epoch)
-            dist.barrier()
+            if not self.device == "cpu":
+                dist.barrier()
+                print(f'Finished epoch {epoch}, rank {self.device}/{self.world_size}')
 
-            print(f'Finished epoch {epoch}, rank {self.device}/{self.world_size}')
-
-            if self.device == 0:
+            if self.device == 0 or self.device == "cpu":
 
                 self.save_checkpoint(self.checkpoint_dir, postfix="last")
                 print("=> Checkpoint updated")
@@ -121,7 +131,8 @@ class Trainer:
                     with open(self.last_epoch_path, "w") as f:
                         f.write(str(epoch))
 
-            dist.barrier()
+            if not self.device == "cpu":
+                dist.barrier()
 
     def train_step(self, step):
 
@@ -133,7 +144,7 @@ class Trainer:
         for batch_idx, (specs, transcripts, input_lengths, label_length, _) in enumerate(loop):
 
             clear_output(wait=True)
-            loop.set_description(f"Rank {self.device} Epoch {step} (train)")
+            loop.set_description(f"Device: {self.device}. Epoch {step} (train)")
             self.optimizer.zero_grad()
 
             specs = specs.to(self.device)
@@ -141,23 +152,31 @@ class Trainer:
             input_lengths = input_lengths.to(self.device)
             label_length = label_length.to(self.device)
 
-            with torch.cuda.amp.autocast():
+            if not self.device == "cpu":
+                with torch.cuda.amp.autocast():
+                    output = self.model(specs)
+                    output = output.permute(2, 0, 1)
+                    output = F.log_softmax(output, dim=2)
+                    loss = self.criterion(output, transcripts, input_lengths, label_length)
+                    losses += loss
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+            else:
                 output = self.model(specs)
                 output = output.permute(2, 0, 1)
                 output = F.log_softmax(output, dim=2)
                 loss = self.criterion(output, transcripts, input_lengths, label_length)
-            losses += loss
-
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+                losses += loss
+                loss.backward()
+                self.optimizer.step()
 
             self.scheduler.step()
 
             loop.set_postfix(loss=loss.item())
             num_batches += 1
 
-            if self.device == 0:
+            if self.device == 0 or self.device == "cpu":
 
                 self.train_writer.add_scalar(f"Epoch {step}: loss", loss, global_step=batch_idx)
 
@@ -170,7 +189,7 @@ class Trainer:
                     rand_idx = random.randint(0, specs.shape[0] - 1)
                     self.train_writer.add_image(f"Epoch {step} (train): augmented specs", save_spec(specs[rand_idx].to("cpu").detach()), global_step=batch_idx)
 
-        if self.device == 0:
+        if self.device == 0 or self.device == "cpu":
             loss = losses / num_batches
             self.train_writer.add_scalar("CTC loss", loss, global_step=step)
 
@@ -186,25 +205,32 @@ class Trainer:
             for batch_idx, (specs, transcripts, input_lengths, label_length, _) in enumerate(loop):
 
                 clear_output(wait=True)
-                loop.set_description(f"Rank {self.device} Epoch {step} (val)")
+                loop.set_description(f"Device: {self.device}. Epoch {step} (val)")
 
                 specs = specs.to(self.device)
                 transcripts = transcripts.to(self.device)
                 input_lengths = input_lengths.to(self.device)
                 label_length = label_length.to(self.device)
 
-                with torch.cuda.amp.autocast():
+                if not self.device == "cpu":
+                    with torch.cuda.amp.autocast():
+                        output = self.model(specs)
+                        output = output.permute(2, 0, 1)
+                        output = F.log_softmax(output, dim=2)
+                        loss = self.criterion(output, transcripts, input_lengths, label_length)
+                else:
                     output = self.model(specs)
                     output = output.permute(2, 0, 1)
                     output = F.log_softmax(output, dim=2)
                     loss = self.criterion(output, transcripts, input_lengths, label_length)
+
                 losses += loss
 
                 loop.set_postfix(loss=loss.item())
 
                 num_batches += 1
 
-                if self.device == 0:
+                if self.device == 0 or self.device == "cpu":
 
                     decoded_preds, decoded_targets = self.processor.decode(output.permute(1, 0, 2), transcripts, label_length)
                     error = wer(decoded_targets, decoded_preds)
@@ -219,7 +245,7 @@ class Trainer:
         loss = losses / num_batches
         error = wers / num_batches
 
-        if self.device == 0:
+        if self.device == 0 or self.device == "cpu":
             self.val_writer.add_scalar("CTC loss", loss, global_step=step)
             self.val_writer.add_scalar("WER", error, global_step=step)
 
@@ -241,8 +267,11 @@ class Trainer:
 
     def loader(self, dataset):
 
-        sampler = DistributedSampler(dataset, rank=self.device, num_replicas=self.world_size)
-        loader = DataLoader(dataset, batch_size=self.batch_size, sampler=sampler, collate_fn=custom_collate)
+        if not self.device == "cpu":
+            sampler = DistributedSampler(dataset, rank=self.device, num_replicas=self.world_size)
+            loader = DataLoader(dataset, batch_size=self.batch_size, sampler=sampler, collate_fn=custom_collate)
+        else:
+            loader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=custom_collate)
 
         return loader
 
@@ -251,12 +280,20 @@ class Trainer:
         if not os.path.exists(path):
             os.mkdir(path)
 
-        torch.save(self.model.module.state_dict(), os.path.join(path, f"model_{postfix}.pt"))
+        if not self.device == "cpu":
+            torch.save(self.model.module.state_dict(), os.path.join(path, f"model_{postfix}.pt"))
+        else:
+            torch.save(self.model.state_dict(), os.path.join(path, f"model_{postfix}.pt"))
+
         torch.save(self.optimizer.state_dict(), os.path.join(path, f"optimizer_{postfix}.pt"))
 
     def load_checkpoint(self, path, map_location):
 
-        self.model.module.load_state_dict(torch.load(os.path.join(path, "model_last.pt"), map_location=map_location))
+        if not self.device == "cpu":
+            self.model.module.load_state_dict(torch.load(os.path.join(path, "model_last.pt"), map_location=map_location))
+        else:
+            self.model.load_state_dict(torch.load(os.path.join(path, "model_last.pt"), map_location=map_location))
+
         self.optimizer.load_state_dict(torch.load(os.path.join(path, "optimizer_last.pt"), map_location=map_location))
 
     def move_checkpoints(self):
@@ -278,7 +315,7 @@ def init_process(rank, size, backend="nccl"):
     dist.init_process_group(backend, rank=rank, world_size=size)
 
 
-def train(rank, world_size, config, from_checkpoint, cash):
+def train_dist(rank, world_size, config, from_checkpoint, cash):
 
     init_process(rank, world_size)
     print(f"Rank {rank}/{world_size} training process initialized.\n")
@@ -302,12 +339,18 @@ def main():
     from_checkpoint = args.from_checkpoint
     cash = args.cash
 
-    WORLD_SIZE = torch.cuda.device_count()
+    if torch.cuda.is_available():
+        world_size = torch.cuda.device_count()
+        mp.spawn(train_dist,
+                 args=(world_size, config, from_checkpoint, cash),
+                 nprocs=world_size,
+                 join=True)
 
-    mp.spawn(train,
-             args=(WORLD_SIZE, config, from_checkpoint, cash),
-             nprocs=WORLD_SIZE,
-             join=True)
+    else:
+        trainer = Trainer(config, rank=None, world_size=None, from_checkpoint=from_checkpoint, cash=cash)
+        print("Initialised trainer")
+        print("Training...")
+        trainer.train()
 
 
 if __name__ == "__main__":

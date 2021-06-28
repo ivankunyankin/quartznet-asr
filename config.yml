@@ -1,5 +1,7 @@
 ---
 
+model: quartznet5x5  # ["quartznet5x5", "quartznet10x5", "quartznet15x5"]
+
 # Datasets
 train:
   data_list: assets/encoder_train_data.txt
