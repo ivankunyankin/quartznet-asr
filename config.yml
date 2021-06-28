@@ -1,0 +1,86 @@
+---
+
+# Data
+spec_params:
+  sr: 16000
+  n_mels: 80
+  n_fft: 1024
+  win_length: 1024
+  hop_length: 256
+
+# Common models and files
+channel_norm: assets/stats.npy
+spk_encoder: objects/speaker_encodings.pt
+vocoder: objects/librispeech_41cec78_1400.pt
+
+# Decoder
+decoder:
+
+  # Models
+  encoder_weights: checkpoints/encoder/model.pt
+
+  train:
+    data_list: assets/decoder_train_data.txt
+    data_dirs: ["LibriTTS/train_clean"]
+    max_length: 12
+  val:
+    data_list: assets/decoder_val_data.txt
+    data_dirs: ["LibriTTS/test_clean"]
+
+  # Training
+  epochs: 20
+  batch_size: 1
+  learning_rate: 1e-4
+  weight_decay: 1e-5
+  apply_aug: True
+  checkpoint_dir: checkpoints/decoder
+  log_dir: logs/decoder
+
+  #OneCycleLR parameters
+  max_lr: 1e-3
+  div_factor: 25.0
+  pct_start: 0.3
+
+  # Test
+  test: False
+  test_set: assets/test_set.yml
+
+# Encoder
+encoder:
+
+  train:
+    data_list: assets/encoder_train_data.txt
+    data_dirs: ["LibriTTS/train_clean"]
+    max_length: 12
+    speed_pertrubation: True
+    masking: True
+  val:
+    data_list: assets/encoder_val_data.txt
+    data_dirs: ["LibriTTS/test_clean"]
+  test:
+    weights: checkpoints/encoder/model.pt
+    data_list: assets/encoder_test_data.txt
+    data_dirs: [ "LibriTTS/test_clean" ]
+
+  # Training
+  epochs: 3
+  batch_size: 1
+  learning_rate: 5e-4
+  weight_decay: 0.0001
+  checkpoint_dir: checkpoints/encoder
+  log_dir: logs/encoder
+
+  #OneCycleLR parameters
+  max_lr: 1e-3
+  div_factor: 25.0
+  pct_start: 0.3
+
+# Inference
+inference:
+
+  # Models
+  encoder_path: checkpoints/encoder/model.pt
+  decoder_path: checkpoints/decoder/model.pt
+
+  # Data
+  out_dir: predictions
