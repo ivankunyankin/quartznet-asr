@@ -6,10 +6,10 @@ import argparse
 import numpy as np
 
 import torch
-from audio_to_mel import audio_to_spect
+from utils import audio_to_mel
 
 
-def main(folders, config):
+def main(folders, config, per_channel):
 
     print("globbing...")
 
@@ -23,10 +23,15 @@ def main(folders, config):
     for path in paths:
 
         audio, _ = librosa.load(path, sr=config["spec_params"]["sr"])
-        melspec = torch.from_numpy(audio_to_spect(audio, config["spec_params"], apply_normalize_spect=False))
+        melspec = torch.from_numpy(audio_to_mel(audio, config["spec_params"]))
 
-        channels_sum += torch.mean(melspec, dim=1)
-        channels_sqrd_sum += torch.mean(melspec**2, dim=1)
+        if per_channel:
+            channels_sum += torch.mean(melspec, dim=1)
+            channels_sqrd_sum += torch.mean(melspec**2, dim=1)
+        else:
+            channels_sum += torch.mean(melspec)
+            channels_sqrd_sum += torch.mean(melspec**2)
+
         num_files += 1
 
     mean = (channels_sum/num_files)
@@ -36,14 +41,17 @@ def main(folders, config):
 
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--conf', default="config.yml", help='Path to the configuration file')
     parser.add_argument("--folders", nargs="+", type=str)
+    parser.add_argument('--conf', default="config.yml", help='Path to the configuration file')
+    parser.add_argument('--per_channel', default=False, action="store_true", help='Calculate per mel channel stats')
 
     args = parser.parse_args()
 
     config = yaml.safe_load(open(args.conf))
     folders = args.folders
+    per_channel = args.per_channel
 
-    main(folders, config)
+    main(folders, config, per_channel)
