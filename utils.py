@@ -1,11 +1,13 @@
 import torch
+import librosa
 import torchaudio
+import numpy as np
 import matplotlib as matplotlib
 import matplotlib.cm
 from models import QuartzNet
 
 
-def model(model, in_channels, out_channels):
+def create_model(model, in_channels, out_channels):
 
     models = ["quartznet5x5", "quartznet10x5", "quartznet15x5"]
     assert model in models, f"Unknown model name. Expected one of {models}, but got {model}"
@@ -18,6 +20,26 @@ def model(model, in_channels, out_channels):
 
     elif model == "quartznet15x5":
         return QuartzNet(repeat=3, in_channels=in_channels, out_channels=out_channels)
+
+
+def audio_to_mel(x, hparams):
+
+    spec = librosa.feature.melspectrogram(
+        x,
+        sr=hparams["sr"],
+        n_fft=hparams["n_fft"],
+        win_length=hparams["win_length"],
+        hop_length=hparams["hop_length"],
+        power=1,
+        fmin=0,
+        fmax=8000,
+        n_mels=hparams["n_mels"]
+    )
+
+    spec = np.log(np.clip(spec, a_min=1e-5, a_max=None))
+    spec = torch.FloatTensor(spec)
+
+    return spec
 
 
 def save_spec(spec):
@@ -90,44 +112,42 @@ def custom_collate(data):
     return features, labels, torch.tensor(input_lengths), torch.tensor(label_lengths), speakers
 
 
-CHAR_MAP = """
-' 0
-<SPACE> 1
-a 2
-b 3
-c 4
-d 5
-e 6
-f 7
-g 8
-h 9
-i 10
-j 11
-k 12
-l 13
-m 14
-n 15
-o 16
-p 17
-q 18
-r 19
-s 20
-t 21
-u 22
-v 23
-w 24
-x 25
-y 26
-z 27
-"""
-
-
 class TextTransform:
 
     """Maps characters to integers and vice versa"""
-    def __init__(self, char_map_str):
+    def __init__(self):
 
-        self.char_map_str = char_map_str
+        self.char_map_str = """
+        ' 0
+        <SPACE> 1
+        a 2
+        b 3
+        c 4
+        d 5
+        e 6
+        f 7
+        g 8
+        h 9
+        i 10
+        j 11
+        k 12
+        l 13
+        m 14
+        n 15
+        o 16
+        p 17
+        q 18
+        r 19    
+        s 20
+        t 21
+        u 22
+        v 23
+        w 24
+        x 25
+        y 26
+        z 27
+        """
+
         self.char_map = {}
         self.index_map = {}
 

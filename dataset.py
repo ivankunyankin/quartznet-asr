@@ -4,9 +4,7 @@ import torch
 import librosa
 import numpy as np
 from torch.utils.data import Dataset
-
-from audio_to_mel import audio_to_spect
-from utils import TextTransform, augment, CHAR_MAP
+from utils import TextTransform, audio_to_mel, augment
 
 
 class LibriDataset(Dataset):
@@ -18,7 +16,7 @@ class LibriDataset(Dataset):
         self.config = config
         self.parameters = config[model][set]
 
-        self.label_encoder = TextTransform(CHAR_MAP)
+        self.label_encoder = TextTransform()
 
         if not os.path.exists(self.parameters["data_list"]):
             self.create_data_list()
@@ -65,14 +63,14 @@ class LibriDataset(Dataset):
 
         # apply per mel channel normalization
         if os.path.exists(self.config["channel_norm"]):
-            melspec = torch.from_numpy(audio_to_spect(audio, self.config["spec_params"], apply_normalize_spect=False))
+            melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"], apply_normalize_spect=False))
             stats = torch.from_numpy(np.load(self.config["channel_norm"]))
             mean = stats[:, 0].unsqueeze(1)
             std = stats[:, 1].unsqueeze(1)
             melspec = (melspec - mean) / std
         else:
             print("\n* Stats file was not found. Applying rough normalization\n")
-            melspec = torch.from_numpy(audio_to_spect(audio, self.config["spec_params"]))
+            melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"]))
 
         # apply time and frequency masking
         if self.parameters.get("masking", None):

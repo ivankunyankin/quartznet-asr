@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from models import QuartzNet
 from dataset import LibriDataset
-from utils import CHAR_MAP, TextTransform, save_spec, custom_collate
+from utils import TextTransform, save_spec, custom_collate
 
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -48,10 +48,10 @@ class Trainer:
         self.val_set = LibriDataset(config, "encoder", "val", cash)
         self.train_loader = self.loader(self.train_set)
         self.val_loader = self.loader(self.val_set)
-        self.processor = TextTransform(CHAR_MAP)
+        self.processor = TextTransform()
 
         # Model
-        self.model = QuartzNetASR().to(self.device)
+        self.model = QuartzNet().to(self.device)
         self.model = DistributedDataParallel(self.model, device_ids=[self.device])
         self.criterion = nn.CTCLoss(blank=28)
         self.optimizer = optim.Adam(self.model.parameters(), lr=float(hparams["learning_rate"]), weight_decay=float(hparams["weight_decay"]))
