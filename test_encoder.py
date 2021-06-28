@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from IPython.display import clear_output
 from torch.utils.data import DataLoader
 
-from models import QuartzNetASR
+from models import QuartzNet
 from dataset import LibriDataset
 from utils import CHAR_MAP, TextTransform, custom_collate
 

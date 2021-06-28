@@ -4,15 +4,6 @@ import matplotlib as matplotlib
 import matplotlib.cm
 
 
-def concat(x, y, exp_to=2, cat_on=1):
-
-    assert len(x.shape) == len(y.shape)
-
-    dims = [i if idx == exp_to else -1 for idx, i in enumerate(x.shape)]
-    y = y.expand(*dims)
-    return torch.cat([x, y], dim=cat_on)
-
-
 def save_spec(spec):
 
     cm = matplotlib.cm.get_cmap('gray')

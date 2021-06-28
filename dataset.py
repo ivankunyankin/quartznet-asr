@@ -3,7 +3,6 @@ import os
 import torch
 import librosa
 import numpy as np
-from models import SpeakerEncoder
 from torch.utils.data import Dataset
 
 from audio_to_mel import audio_to_spect
@@ -19,7 +18,6 @@ class LibriDataset(Dataset):
         self.config = config
         self.parameters = config[model][set]
 
-        self.speaker_encoder = SpeakerEncoder(self.config["spk_encoder"])
         self.label_encoder = TextTransform(CHAR_MAP)
 
         if not os.path.exists(self.parameters["data_list"]):
@@ -34,7 +32,7 @@ class LibriDataset(Dataset):
             self.collection = []
 
             for sample in data:
-                audio, transcript, speaker = sample
+                audio, transcript = sample
                 audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
                 with open(transcript, "r") as text:
                     transcript = text.read()
@@ -42,7 +40,7 @@ class LibriDataset(Dataset):
                 transcript = re.sub("[^'A-Za-z0-9 ]+", '', transcript)
                 transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
 
-                self.collection.append([audio, transcript, speaker])
+                self.collection.append([audio, transcript])
         else:
             self.collection = data
 
@@ -50,7 +48,7 @@ class LibriDataset(Dataset):
         return len(self.collection)
 
     def __getitem__(self, item):
-        audio, transcript, speaker = self.collection[item]
+        audio, transcript = self.collection[item]
 
         if not self.cash:
             audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
@@ -83,7 +81,7 @@ class LibriDataset(Dataset):
         input_length = melspec.shape[1]
         label_length = len(transcript)
 
-        return melspec, transcript, input_length, label_length, speaker
+        return melspec, transcript, input_length, label_length
 
     def create_data_list(self):
 
@@ -103,16 +101,11 @@ class LibriDataset(Dataset):
                             if length > int(self.parameters["max_length"]):
                                 continue
 
-                        # speaker check
-                        speaker = "libritts_spkr_" + file.split("_")[0]
-                        if not self.speaker_encoder.check(speaker):
-                            continue
-
                         # label check
                         label = os.path.splitext(file)[0] + ".transcription.txt"
                         if not os.path.exists(os.path.join(root, label)):
                             continue
 
-                        data_list.write(f"{os.path.join(root, file)} {os.path.join(root, label)} {speaker} {os.linesep}")
+                        data_list.write(f"{os.path.join(root, file)} {os.path.join(root, label)} {os.linesep}")
 
         data_list.close()

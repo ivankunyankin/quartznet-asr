@@ -1,5 +1,3 @@
-import os
-import yaml
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -70,10 +68,10 @@ def audio_to_spect(audio, hparams, apply_normalize_spect=True, apply_padding=Tru
             return audio_to_spect(audio.squeeze(1), hparams=hparams)
 
         else:
-            raise Exception("WhisppSTFT obtained audio tensor of unexpected shape")
+            raise Exception("Audio tensor of unexpected shape")
 
         return mel
 
     else:
-        raise Exception("WhisppSTFT obtained audio of unexpected type")
+        raise Exception("Audio of unexpected type")
 
