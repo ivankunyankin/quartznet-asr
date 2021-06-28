@@ -2,6 +2,22 @@ import torch
 import torchaudio
 import matplotlib as matplotlib
 import matplotlib.cm
+from models import QuartzNet
+
+
+def model(model, in_channels, out_channels):
+
+    models = ["quartznet5x5", "quartznet10x5", "quartznet15x5"]
+    assert model in models, f"Unknown model name. Expected one of {models}, but got {model}"
+
+    if model == "quartznet5x5":
+        return QuartzNet(repeat=1, in_channels=in_channels, out_channels=out_channels)
+
+    elif model == "quartznet10x5":
+        return QuartzNet(repeat=2, in_channels=in_channels, out_channels=out_channels)
+
+    elif model == "quartznet15x5":
+        return QuartzNet(repeat=3, in_channels=in_channels, out_channels=out_channels)
 
 
 def save_spec(spec):

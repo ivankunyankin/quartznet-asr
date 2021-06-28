@@ -3,45 +3,47 @@ import torch.nn as nn
 
 class QuartzNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, repeat, in_channels, out_channels):
 
         super(QuartzNet, self).__init__()
 
-        self.in_channels = 80
-        self.channels = [256, 256, 256, 512, 512, 512, 512, 1024, 29]
-        self.k = [33, 39, 51, 63, 75, 87, 1, 1]
-        self.n_blocks = 5
+        block_channels = [256, 256, 512, 512, 512, 512]
+        block_k = [33, 39, 51, 63, 75]
 
-        self.conv1 = nn.Sequential(nn.Conv1d(self.in_channels, self.channels[0], kernel_size=self.k[0], stride=[1], padding=self.k[0]//2),
-                                   nn.BatchNorm1d(self.channels[0], eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
-                                   nn.ReLU(),
-                                   nn.Dropout(p=0.2, inplace=False))
+        self.C1 = nn.Sequential(nn.Conv1d(in_channels, 256, kernel_size=33, padding=16, bias=False),
+                                nn.BatchNorm1d(256, eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
+                                nn.ReLU(),
+                                nn.Dropout(p=0.2, inplace=False))
 
-        self.blocks = nn.ModuleList([])
-        for i in range(self.n_blocks):
-            pad = self.k[i] // 2
-            self.blocks.append(JasperBlock(self.channels[i], self.channels[i+1], self.k[i], pad))
+        self.B = nn.ModuleList([])
 
-        self.conv2 = nn.Sequential(nn.Conv1d(self.channels[5], self.channels[6], kernel_size=87, padding=86, dilation=2),
-                                   nn.BatchNorm1d(self.channels[6], eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
-                                   nn.ReLU(),
-                                   nn.Dropout(p=0.2, inplace=False))
-        self.conv3 = nn.Sequential(nn.Conv1d(self.channels[6], self.channels[7], kernel_size=1),
-                                   nn.BatchNorm1d(self.channels[7], eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
-                                   nn.ReLU(),
-                                   nn.Dropout(p=0.2, inplace=False))
-        self.conv4 = nn.Conv1d(self.channels[7], self.channels[8], kernel_size=1)
+        for i in range(5):
+            pad = block_k[i] // 2
+            for rep in range(repeat):
+                self.B.append(JasperBlock(block_channels[i], block_channels[i+1], block_k[i], pad))
+
+        self.C2 = nn.Sequential(nn.Conv1d(512, 512, kernel_size=87, padding=86, dilation=2),
+                                nn.BatchNorm1d(512, eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
+                                nn.ReLU(),
+                                nn.Dropout(p=0.2, inplace=False))
+
+        self.C3 = nn.Sequential(nn.Conv1d(512, 1024, kernel_size=1),
+                                nn.BatchNorm1d(1024, eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
+                                nn.ReLU(),
+                                nn.Dropout(p=0.2, inplace=False))
+
+        self.C4 = nn.Conv1d(1024, out_channels, kernel_size=1)
 
     def forward(self, x):
 
-        x = self.conv1(x)
+        x = self.C1(x)
 
-        for layer in self.blocks:
-            x = layer(x)
+        for block in self.B:
+            x = block(x)
 
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
+        x = self.C2(x)
+        x = self.C3(x)
+        x = self.C4(x)
 
         return x
 
