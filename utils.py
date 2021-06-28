@@ -54,7 +54,10 @@ def save_spec(spec):
 
 def augment(spec, piece_length=30, freq_mask_param=10, time_mask_param=6):
 
-    num = spec.shape[1] // piece_length
+    if piece_length == -1:
+        num = 1
+    else:
+        num = spec.shape[1] // piece_length  # less agressive augmentation. performs faster
 
     freq = torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_mask_param)
     time = torchaudio.transforms.TimeMasking(time_mask_param=time_mask_param)
