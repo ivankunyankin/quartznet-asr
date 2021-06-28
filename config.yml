@@ -4,9 +4,8 @@
 train:
   data_list: assets/encoder_train_data.txt
   data_dirs: ["LibriTTS/train_clean"]
-  max_length: 12
-  speed_pertrubation: True
-  masking: True
+  apply_speed_pertrubation: True
+  apply_masking: True
 
 val:
   data_list: assets/encoder_val_data.txt
@@ -18,6 +17,7 @@ test:
   data_dirs: [ "LibriTTS/test_clean" ]
 
 # Training
+max_length: 12
 epochs: 3
 batch_size: 1
 learning_rate: 5e-4
@@ -25,15 +25,17 @@ weight_decay: 0.0001
 checkpoint_dir: checkpoints/encoder
 log_dir: logs/encoder
 
-#OneCycleLR parameters
+# OneCycleLR parameters
 max_lr: 1e-3
 div_factor: 25.0
 pct_start: 0.3
 
 # Augmentation
-freq_masking: 10
-time_masking: 6
-piece_length: 30
+speed_pertrubation: 0.1
+masking:
+  piece_length: 30
+  freq_masking: 10
+  time_masking: 6
 
 spec_params:
   sr: 16000
@@ -42,4 +44,4 @@ spec_params:
   win_length: 1024
   hop_length: 256
 
-channel_norm: assets/stats.npy
+stats: assets/stats.npy

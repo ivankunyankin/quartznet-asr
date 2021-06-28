@@ -67,8 +67,9 @@ class LibriDataset(Dataset):
                 transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
 
         # apply time stretch
-        if self.parameters.get("speed_pertrubation", None):
-            rate = np.random.uniform(low=0.9, high=1.1)
+        if self.parameters.get("apply_speed_pertrubation", None):
+            limit = self.config.get("speed_pertrubation", 0.1)
+            rate = np.random.uniform(low=1-limit, high=1+limit)
             audio = librosa.effects.time_stretch(audio, rate)
 
         # generate mel spectrogram
@@ -79,8 +80,8 @@ class LibriDataset(Dataset):
             melspec = (melspec - self.mean) / self.std
 
         # apply time and frequency masking
-        if self.parameters.get("masking", None):
-            melspec = augment(melspec)
+        if self.parameters.get("apply_masking", None):
+            melspec = augment(melspec, *self.config["masking"])
 
         input_length = melspec.shape[1]
         label_length = len(transcript)
@@ -100,7 +101,7 @@ class LibriDataset(Dataset):
                         audio, sr = librosa.load(os.path.join(root, file), sr=self.config["spec_params"]["sr"])
 
                         # length check
-                        if self.parameters.get("max_length", None):
+                        if self.config.get("max_length", None):
                             length = audio.shape[0] / sr
                             if length > int(self.parameters["max_length"]):
                                 continue
