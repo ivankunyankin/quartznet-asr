@@ -9,17 +9,27 @@ from utils import TextTransform, audio_to_mel, augment
 
 class LibriDataset(Dataset):
 
-    def __init__(self, config, model, set, cash):
+    def __init__(self, config, set, cash):
         super(LibriDataset, self).__init__()
 
         self.cash = cash
         self.config = config
-        self.parameters = config[model][set]
+        self.parameters = config[set]
 
         self.label_encoder = TextTransform()
 
         if not os.path.exists(self.parameters["data_list"]):
             self.create_data_list()
+
+        if self.config["apply_normalization"]:
+            if os.path.exists(self.config["stats"]):
+                stats = torch.from_numpy(np.load(self.config["stats"]))
+                if stats.shape[0] == 1:
+                    self.mean = stats[0, 0]
+                    self.std = stats[0, 1]
+                else:
+                    self.mean = stats[:, 0].unsqueeze(1)
+                    self.std = stats[:, 1].unsqueeze(1)
 
         with open(self.parameters["data_list"], "r") as f:
             data = f.readlines()
@@ -61,16 +71,12 @@ class LibriDataset(Dataset):
             rate = np.random.uniform(low=0.9, high=1.1)
             audio = librosa.effects.time_stretch(audio, rate)
 
-        # apply per mel channel normalization
-        if os.path.exists(self.config["channel_norm"]):
-            melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"], apply_normalize_spect=False))
-            stats = torch.from_numpy(np.load(self.config["channel_norm"]))
-            mean = stats[:, 0].unsqueeze(1)
-            std = stats[:, 1].unsqueeze(1)
-            melspec = (melspec - mean) / std
-        else:
-            print("\n* Stats file was not found. Applying rough normalization\n")
-            melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"]))
+        # generate mel spectrogram
+        melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"]))
+
+        # apply normalization
+        if self.config["apply_normalization"]:
+            melspec = (melspec - self.mean) / self.std
 
         # apply time and frequency masking
         if self.parameters.get("masking", None):
