@@ -9,10 +9,10 @@ from utils import TextTransform, audio_to_mel, augment
 
 class LibriDataset(Dataset):
 
-    def __init__(self, config, set, cash):
+    def __init__(self, config, set, cache):
         super(LibriDataset, self).__init__()
 
-        self.cash = cash
+        self.cache = cache
         self.config = config
         self.parameters = config[set]
 
@@ -35,7 +35,7 @@ class LibriDataset(Dataset):
             data = f.readlines()
         data = [line.strip().split() for line in data]
 
-        if self.cash:
+        if self.cache:
 
             self.collection = []
 
@@ -58,7 +58,7 @@ class LibriDataset(Dataset):
     def __getitem__(self, item):
         audio, transcript = self.collection[item]
 
-        if not self.cash:
+        if not self.cache:
             audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
             with open(transcript, "r") as text:
                 transcript = text.read()

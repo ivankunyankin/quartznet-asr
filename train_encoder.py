@@ -30,7 +30,7 @@ random.seed(0)
 
 class Trainer:
 
-    def __init__(self, config, rank, world_size, from_checkpoint, cash):
+    def __init__(self, config, rank, world_size, from_checkpoint, cache):
 
         self.device = rank if rank else "cpu"
         self.world_size = world_size
@@ -40,10 +40,11 @@ class Trainer:
         self.checkpoint_dir = config["checkpoint_dir"]
         self.start_epoch = 1
         self.epochs = config["epochs"] + 1
+        self.use_onecyclelr = config["use_onecyclelr"]
 
         # Data
-        self.train_set = LibriDataset(config, "train", cash)
-        self.val_set = LibriDataset(config, "val", cash)
+        self.train_set = LibriDataset(config, "train", cache)
+        self.val_set = LibriDataset(config, "val", cache)
         self.train_loader = self.loader(self.train_set)
         self.val_loader = self.loader(self.val_set)
         self.processor = TextTransform()
@@ -60,7 +61,9 @@ class Trainer:
 
         self.criterion = nn.CTCLoss(blank=len(self.processor.char_map)+1)
         self.optimizer = optim.Adam(self.model.parameters(), lr=float(config["learning_rate"]), weight_decay=float(config["weight_decay"]))
-        self.scheduler = self.oneCycleLR(config)
+
+        if self.use_onecyclelr:
+            self.scheduler = self.oneCycleLR(config)
 
         if from_checkpoint:
 
@@ -76,7 +79,8 @@ class Trainer:
                 last_epoch = int(f.read())
                 last_batch_idx = last_epoch * len(self.train_loader) - 1
                 self.start_epoch = last_epoch + 1
-                self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
+                if self.use_onecyclelr:
+                    self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
 
         if not self.device == "cpu":
             self.scaler = torch.cuda.amp.GradScaler()
@@ -171,7 +175,8 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-            self.scheduler.step()
+            if self.use_onecyclelr:
+                self.scheduler.step()
 
             loop.set_postfix(loss=loss.item())
             num_batches += 1
@@ -315,12 +320,12 @@ def init_process(rank, size, backend="nccl"):
     dist.init_process_group(backend, rank=rank, world_size=size)
 
 
-def train_dist(rank, world_size, config, from_checkpoint, cash):
+def train_dist(rank, world_size, config, from_checkpoint, cache):
 
     init_process(rank, world_size)
     print(f"Rank {rank}/{world_size} training process initialized.\n")
 
-    trainer = Trainer(config, rank, world_size, from_checkpoint, cash)
+    trainer = Trainer(config, rank, world_size, from_checkpoint, cache)
     dist.barrier()
     print(f"Rank {rank}/{world_size} initialised trainer.\n")
 
@@ -332,22 +337,22 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--conf', default="config.yml", help='Path to the configuration file')
     parser.add_argument('--from_checkpoint', action="store_true", help='Continue training from the last checkpoint')
-    parser.add_argument('--cash', action="store_true", help='Cash waveforms and transcirpts into memory')
+    parser.add_argument('--cache', action="store_true", help='Cache waveforms and transcirpts into memory')
     args = parser.parse_args()
 
     config = yaml.safe_load(open(args.conf))
     from_checkpoint = args.from_checkpoint
-    cash = args.cash
+    cache = args.cache
 
     if torch.cuda.is_available():
         world_size = torch.cuda.device_count()
         mp.spawn(train_dist,
-                 args=(world_size, config, from_checkpoint, cash),
+                 args=(world_size, config, from_checkpoint, cache),
                  nprocs=world_size,
                  join=True)
 
     else:
-        trainer = Trainer(config, rank=None, world_size=None, from_checkpoint=from_checkpoint, cash=cash)
+        trainer = Trainer(config, rank=None, world_size=None, from_checkpoint=from_checkpoint, cache=cache)
         print("Initialised trainer")
         print("Training...")
         trainer.train()

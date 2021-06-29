@@ -19,15 +19,17 @@ test:
   data_dirs: [ "LibriTTS/test_clean" ]
 
 # Training
-max_length: 12
+max_length: 12  # maximum file length in seconds. Can be used to avoid OOM (out-of-memory) error
 epochs: 3
 batch_size: 1
-learning_rate: 5e-4
+learning_rate: 5e-4  # constant learning rate value. Omitted if using OneCycleLR
 weight_decay: 0.0001
 checkpoint_dir: checkpoints/encoder
 log_dir: logs/encoder
+use_onecyclelr: True
 
 # OneCycleLR parameters
+# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html#torch.optim.lr_scheduler.OneCycleLR
 max_lr: 1e-3
 div_factor: 25.0
 pct_start: 0.3
@@ -35,7 +37,7 @@ pct_start: 0.3
 # Augmentation
 speed_pertrubation: 0.1
 masking:
-  piece_length: 30
+  piece_length: 30  # the size of each spectrogram segment (time axis) to apply augmentation to
   freq_masking: 10
   time_masking: 6
 
