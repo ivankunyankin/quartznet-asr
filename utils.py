@@ -52,40 +52,26 @@ def save_spec(spec):
     return torch.from_numpy(mapped).flip(0).permute(2, 0, 1)
 
 
-def augment(spec, piece_length=30, freq_mask_param=10, time_mask_param=6):
+def augment(in_spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
 
-    if piece_length == -1:
-        num = 1
-    else:
-        num = spec.shape[1] // piece_length  # less agressive augmentation. performs faster
+    spec = torch.clone(in_spec)
 
-    freq = torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_mask_param)
-    time = torchaudio.transforms.TimeMasking(time_mask_param=time_mask_param)
+    freq_mask = torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_mask_param, iid_masks=True)
+    time_mask = torchaudio.transforms.TimeMasking(time_mask_param=time_mask_param, iid_masks=True)
 
-    if num > 1:
-        pieces = []
+    num_chunks = spec.shape[1] // chunk_size
 
-        for i in range(1, num + 1):
-
-            start = piece_length * (i - 1)
-            end = piece_length * i
-            piece = spec[:, start:end]
-
-            if i == num:
-                piece = spec[:, start:]
-
-            freq(piece)
-            time(piece)
-
-            pieces.append(piece)
-
-        return torch.cat(pieces, dim=1)
-
-    else:
-        freq(spec)
-        time(spec)
-
+    if num_chunks <= 1:
+        freq_mask(spec)
+        time_mask(spec)
         return spec
+    else:
+        chunks = torch.split(spec, chunk_size, dim=1)
+        to_be_masked = torch.stack(list(chunks[:-1]), dim=0).unsqueeze(1)
+        time_mask(to_be_masked)
+        freq_mask(to_be_masked)
+        masked = to_be_masked.squeeze(1).permute(1, 0, 2).reshape((spec.shape[0], -1))
+        return torch.cat([masked, chunks[-1]], dim=1)
 
 
 def custom_collate(data):
