@@ -52,9 +52,7 @@ def save_spec(spec):
     return torch.from_numpy(mapped).flip(0).permute(2, 0, 1)
 
 
-def augment(in_spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
-
-    spec = torch.clone(in_spec)
+def augment(spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
 
     freq_mask = torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_mask_param, iid_masks=True)
     time_mask = torchaudio.transforms.TimeMasking(time_mask_param=time_mask_param, iid_masks=True)

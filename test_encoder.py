@@ -13,9 +13,8 @@ import torch.nn.functional as F
 from IPython.display import clear_output
 from torch.utils.data import DataLoader
 
-from models import QuartzNet
 from dataset import LibriDataset
-from utils import CHAR_MAP, TextTransform, custom_collate
+from utils import TextTransform, custom_collate, create_model
 
 
 torch.manual_seed(0)
@@ -35,12 +34,17 @@ class Tester:
         self.weights = hparams["test"]["weights"]
 
         # Data
-        self.dataset = LibriDataset(config, "encoder", "test", cash=False)
+        self.dataset = LibriDataset(config, "test", cache=True)
         self.loader = self.loader(self.dataset)
-        self.processor = TextTransform(CHAR_MAP)
+        self.processor = TextTransform()
 
         # Model
-        self.model = QuartzNetASR().to(self.device)
+        self.model = create_model(
+            model=config["model"],
+            in_channels=config["spec_params"]["n_mels"],
+            out_channels=len(self.processor.char_map)
+        )
+        self.model.to(self.device)
         self.model.module.load_state_dict(torch.load(self.weights, map_location=self.device))
         self.criterion = nn.CTCLoss(blank=28)
 
