@@ -21,7 +21,7 @@ class LibriDataset(Dataset):
         if not os.path.exists(self.parameters["data_list"]):
             self.create_data_list()
 
-        if self.config["apply_normalization"]:
+        if self.config["normalize"]:
             if os.path.exists(self.config["stats"]):
                 stats = torch.from_numpy(np.load(self.config["stats"]))
                 if stats.shape[0] == 1:
@@ -73,15 +73,15 @@ class LibriDataset(Dataset):
             audio = librosa.effects.time_stretch(audio, rate)
 
         # generate mel spectrogram
-        melspec = torch.from_numpy(audio_to_mel(audio, self.config["spec_params"]))
+        melspec = audio_to_mel(audio, self.config["spec_params"])
 
         # apply normalization
-        if self.config["apply_normalization"]:
+        if self.config["normalize"]:
             melspec = (melspec - self.mean) / self.std
 
         # apply time and frequency masking
         if self.parameters.get("apply_masking", None):
-            melspec = augment(melspec, *self.config["masking"])
+            melspec = augment(melspec, *self.config["masking"].values())
 
         input_length = melspec.shape[1]
         label_length = len(transcript)
@@ -103,11 +103,11 @@ class LibriDataset(Dataset):
                         # length check
                         if self.config.get("max_length", None):
                             length = audio.shape[0] / sr
-                            if length > int(self.parameters["max_length"]):
+                            if length > int(self.config["max_length"]):
                                 continue
 
                         # label check
-                        label = os.path.splitext(file)[0] + ".transcription.txt"
+                        label = os.path.splitext(file)[0] + ".normalized.txt"
                         if not os.path.exists(os.path.join(root, label)):
                             continue
 

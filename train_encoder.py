@@ -53,13 +53,13 @@ class Trainer:
         self.model = create_model(
             model=config["model"],
             in_channels=config["spec_params"]["n_mels"],
-            out_channels=len(self.processor.char_map)
+            out_channels=len(self.processor.char_map) + 1  # for blank token
         )
 
         if not self.device == "cpu":
             self.model = DistributedDataParallel(self.model, device_ids=[self.device])
 
-        self.criterion = nn.CTCLoss(blank=len(self.processor.char_map)+1)
+        self.criterion = nn.CTCLoss(blank=len(self.processor.char_map))
         self.optimizer = optim.Adam(self.model.parameters(), lr=float(config["learning_rate"]), weight_decay=float(config["weight_decay"]))
 
         if self.use_onecyclelr:
@@ -145,7 +145,7 @@ class Trainer:
         losses = 0
         num_batches = 0
 
-        for batch_idx, (specs, transcripts, input_lengths, label_length, _) in enumerate(loop):
+        for batch_idx, (specs, transcripts, input_lengths, label_length) in enumerate(loop):
 
             clear_output(wait=True)
             loop.set_description(f"Device: {self.device}. Epoch {step} (train)")
@@ -207,7 +207,7 @@ class Trainer:
         num_batches = 0
 
         with torch.no_grad():
-            for batch_idx, (specs, transcripts, input_lengths, label_length, _) in enumerate(loop):
+            for batch_idx, (specs, transcripts, input_lengths, label_length) in enumerate(loop):
 
                 clear_output(wait=True)
                 loop.set_description(f"Device: {self.device}. Epoch {step} (val)")

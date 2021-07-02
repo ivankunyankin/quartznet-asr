@@ -23,7 +23,7 @@ def main(folders, config, per_channel):
     for path in paths:
 
         audio, _ = librosa.load(path, sr=config["spec_params"]["sr"])
-        melspec = torch.from_numpy(audio_to_mel(audio, config["spec_params"]))
+        melspec = audio_to_mel(audio, config["spec_params"])
 
         if per_channel:
             channels_sum += torch.mean(melspec, dim=1)
@@ -37,7 +37,7 @@ def main(folders, config, per_channel):
     mean = (channels_sum/num_files)
     std = (channels_sqrd_sum/num_files - mean**2)**0.5
 
-    np.save("stats.npy", torch.cat([mean.unsqueeze(1), std.unsqueeze(1)], dim=1).numpy())
+    np.save(config["stats"], torch.cat([mean.unsqueeze(0), std.unsqueeze(0)], dim=0).unsqueeze(0).numpy())
 
 
 if __name__ == "__main__":

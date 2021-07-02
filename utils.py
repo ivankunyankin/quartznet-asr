@@ -54,10 +54,10 @@ def save_spec(spec):
 
 def augment(spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
 
-    freq_mask = torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_mask_param, iid_masks=True)
-    time_mask = torchaudio.transforms.TimeMasking(time_mask_param=time_mask_param, iid_masks=True)
+    freq_mask = torchaudio.transforms.FrequencyMasking(freq_mask_param=int(freq_mask_param), iid_masks=True)
+    time_mask = torchaudio.transforms.TimeMasking(time_mask_param=int(time_mask_param), iid_masks=True)
 
-    num_chunks = spec.shape[1] // chunk_size
+    num_chunks = spec.shape[1] // int(chunk_size)
 
     if num_chunks <= 1:
         freq_mask(spec)
@@ -74,14 +74,13 @@ def augment(spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
 
 def custom_collate(data):
     """
-       data: is a list of tuples with (melspec, transcript, input_length, label_length, speaker_id), where:
+       data: is a list of tuples with (melspec, transcript, input_length, label_length), where:
         - 'melspec' is a tensor of arbitrary shape
         - 'transcript' is an encoded transcript - list of integers
         - input_length - is length of the spectrogram - represents time
         - label_length - is length of the encoded label
-        - speaker_id - is a scalar - represents a unique speaker id for the speaker encoder
     """
-    melspecs, texts, input_lengths, label_lengths, speakers = zip(*data)
+    melspecs, texts, input_lengths, label_lengths = zip(*data)
 
     max_inp_len = max(input_lengths)
     max_label_len = max(label_lengths)
@@ -96,7 +95,7 @@ def custom_collate(data):
         features[i] = torch.cat([data[i][0], torch.zeros((n_mels, max_inp_len - input_length))], dim=1)
         labels[i] = torch.cat([data[i][1], torch.zeros((max_label_len - label_length))])
 
-    return features, labels, torch.tensor(input_lengths), torch.tensor(label_lengths), speakers
+    return features, labels, torch.tensor(input_lengths), torch.tensor(label_lengths)
 
 
 class TextTransform:
