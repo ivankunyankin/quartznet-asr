@@ -32,7 +32,7 @@ class Trainer:
 
     def __init__(self, config, rank, world_size, from_checkpoint, cache):
 
-        self.device = rank if rank else "cpu"
+        self.device = rank if not rank == None else "cpu"
         self.world_size = world_size
 
         # Parameters
@@ -55,6 +55,7 @@ class Trainer:
             in_channels=config["spec_params"]["n_mels"],
             out_channels=len(self.processor.char_map) + 1  # for blank token
         )
+        self.model.to(self.device)
 
         if not self.device == "cpu":
             self.model = DistributedDataParallel(self.model, device_ids=[self.device])
