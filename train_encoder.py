@@ -32,7 +32,7 @@ class Trainer:
 
     def __init__(self, config, rank, world_size, from_checkpoint, cache):
 
-        self.device = rank if not rank == None else "cpu"
+        self.device = rank
         self.world_size = world_size
 
         # Parameters
@@ -57,7 +57,7 @@ class Trainer:
         )
         self.model.to(self.device)
 
-        if not self.device == "cpu":
+        if self.world_size:
             self.model = DistributedDataParallel(self.model, device_ids=[self.device])
 
         self.criterion = nn.CTCLoss(blank=len(self.processor.char_map))
@@ -68,7 +68,7 @@ class Trainer:
 
         if from_checkpoint:
 
-            if not self.device == "cpu":
+            if self.world_size:
                 map_location = {'cuda:%d' % 0: 'cuda:%d' % self.device}
                 self.load_checkpoint(self.checkpoint_dir, map_location)
                 print(f"=> Rank {self.device}. Loaded checkpoint")
@@ -87,7 +87,7 @@ class Trainer:
             self.scaler = torch.cuda.amp.GradScaler()
 
         # Logging
-        if self.device == 0 or self.device == "cpu":
+        if self.device == 0 or not self.world_size:
 
             now = datetime.datetime.now()
             path = os.path.join(config["log_dir"], now.strftime("%Y:%m:%d_%H:%M:%S"))
@@ -108,15 +108,15 @@ class Trainer:
         for epoch in range(self.start_epoch, self.epochs):
 
             self.train_step(epoch)
-            if not self.device == "cpu":
+            if self.world_size:
                 dist.barrier()
 
             loss = self.val_step(epoch)
-            if not self.device == "cpu":
+            if self.world_size:
                 dist.barrier()
                 print(f'Finished epoch {epoch}, rank {self.device}/{self.world_size}')
 
-            if self.device == 0 or self.device == "cpu":
+            if self.device == 0 or not self.world_size:
 
                 self.save_checkpoint(self.checkpoint_dir, postfix="last")
                 print("=> Checkpoint updated")
@@ -136,7 +136,7 @@ class Trainer:
                     with open(self.last_epoch_path, "w") as f:
                         f.write(str(epoch))
 
-            if not self.device == "cpu":
+            if self.world_size:
                 dist.barrier()
 
     def train_step(self, step):
@@ -182,7 +182,7 @@ class Trainer:
             loop.set_postfix(loss=loss.item())
             num_batches += 1
 
-            if self.device == 0 or self.device == "cpu":
+            if self.device == 0 or not self.world_size:
 
                 self.train_writer.add_scalar(f"Epoch {step}: loss", loss, global_step=batch_idx)
 
@@ -195,7 +195,7 @@ class Trainer:
                     rand_idx = random.randint(0, specs.shape[0] - 1)
                     self.train_writer.add_image(f"Epoch {step} (train): augmented specs", save_spec(specs[rand_idx].to("cpu").detach()), global_step=batch_idx)
 
-        if self.device == 0 or self.device == "cpu":
+        if self.device == 0 or not self.world_size:
             loss = losses / num_batches
             self.train_writer.add_scalar("CTC loss", loss, global_step=step)
 
@@ -236,7 +236,7 @@ class Trainer:
 
                 num_batches += 1
 
-                if self.device == 0 or self.device == "cpu":
+                if self.device == 0 or not self.world_size:
 
                     decoded_preds, decoded_targets = self.processor.decode(output.permute(1, 0, 2), transcripts, label_length)
                     error = wer(decoded_targets, decoded_preds)
@@ -251,7 +251,7 @@ class Trainer:
         loss = losses / num_batches
         error = wers / num_batches
 
-        if self.device == 0 or self.device == "cpu":
+        if self.device == 0 or not self.world_size:
             self.val_writer.add_scalar("CTC loss", loss, global_step=step)
             self.val_writer.add_scalar("WER", error, global_step=step)
 
@@ -273,7 +273,7 @@ class Trainer:
 
     def loader(self, dataset):
 
-        if not self.device == "cpu":
+        if self.world_size:
             sampler = DistributedSampler(dataset, rank=self.device, num_replicas=self.world_size)
             loader = DataLoader(dataset, batch_size=self.batch_size, sampler=sampler, collate_fn=custom_collate)
         else:
@@ -286,7 +286,7 @@ class Trainer:
         if not os.path.exists(path):
             os.mkdir(path)
 
-        if not self.device == "cpu":
+        if self.world_size:
             torch.save(self.model.module.state_dict(), os.path.join(path, f"model_{postfix}.pt"))
         else:
             torch.save(self.model.state_dict(), os.path.join(path, f"model_{postfix}.pt"))
@@ -295,7 +295,7 @@ class Trainer:
 
     def load_checkpoint(self, path, map_location):
 
-        if not self.device == "cpu":
+        if self.world_size:
             self.model.module.load_state_dict(torch.load(os.path.join(path, "model_last.pt"), map_location=map_location))
         else:
             self.model.load_state_dict(torch.load(os.path.join(path, "model_last.pt"), map_location=map_location))
@@ -345,15 +345,17 @@ def main():
     from_checkpoint = args.from_checkpoint
     cache = args.cache
 
-    if torch.cuda.is_available():
-        world_size = torch.cuda.device_count()
+    world_size = torch.cuda.device_count()
+
+    if world_size > 1:
         mp.spawn(train_dist,
                  args=(world_size, config, from_checkpoint, cache),
                  nprocs=world_size,
                  join=True)
 
     else:
-        trainer = Trainer(config, rank=None, world_size=None, from_checkpoint=from_checkpoint, cache=cache)
+        device = "gpu" if torch.cuda.is_available() else "cpu"
+        trainer = Trainer(config, rank=device, world_size=None, from_checkpoint=from_checkpoint, cache=cache)
         print("Initialised trainer")
         print("Training...")
         trainer.train()
