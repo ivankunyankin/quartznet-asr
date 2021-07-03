@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib as matplotlib
 import matplotlib.cm
 from models import QuartzNet
+from torch.nn.utils.rnn import pad_sequence
 
 
 def create_model(model, in_channels, out_channels):
@@ -73,29 +74,24 @@ def augment(spec, chunk_size=30, freq_mask_param=10, time_mask_param=6):
 
 
 def custom_collate(data):
+
     """
-       data: is a list of tuples with (melspec, transcript, input_length, label_length), where:
-        - 'melspec' is a tensor of arbitrary shape
-        - 'transcript' is an encoded transcript - list of integers
-        - input_length - is length of the spectrogram - represents time
-        - label_length - is length of the encoded label
+   data: is a list of tuples with (melspec, transcript, input_length, label_length), where:
+    - 'melspec' is a tensor of arbitrary shape
+    - 'transcript' is an encoded transcript - list of integers
+    - input_length - is length of the spectrogram - represents time - int
+    - label_length - is length of the encoded label - int
     """
+
     melspecs, texts, input_lengths, label_lengths = zip(*data)
 
-    max_inp_len = max(input_lengths)
-    max_label_len = max(label_lengths)
+    specs = [torch.transpose(spec, 0, 1) for spec in melspecs]
+    specs = pad_sequence(specs, batch_first=True)
+    specs = torch.transpose(specs, 1, 2)
 
-    n_mels = melspecs[0].shape[0]
-    features = torch.zeros((len(data), n_mels, max_inp_len))
-    labels = torch.zeros((len(data), max_label_len))
+    labels = pad_sequence(texts, batch_first=True)
 
-    for i in range(len(data)):
-        input_length = data[i][0].size(1)
-        label_length = data[i][3]
-        features[i] = torch.cat([data[i][0], torch.zeros((n_mels, max_inp_len - input_length))], dim=1)
-        labels[i] = torch.cat([data[i][1], torch.zeros((max_label_len - label_length))])
-
-    return features, labels, torch.tensor(input_lengths), torch.tensor(label_lengths)
+    return specs, labels, torch.tensor(input_lengths), torch.tensor(label_lengths)
 
 
 class TextTransform:
