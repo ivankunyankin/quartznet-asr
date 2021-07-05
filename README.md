@@ -9,23 +9,19 @@ Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.1026
 ### Features
 
 1. Allows to choose between three different model sizes: ![5x5](https://img.shields.io/badge/-5x5-blue), ![10x5](https://img.shields.io/badge/-10x5-blue), ![15x5](https://img.shields.io/badge/-15x5-blue). For details refer to the article.  
-
 2. Easily customisable  
-
 3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green).  
-
 4. Suitable for training in ![colab](https://img.shields.io/badge/-Google%20Colab-orange) and ![aws](https://img.shields.io/badge/-AWS-orange) spot instances as it allows to continue training after a break-down.  
 
 ### Table of contents
 
-1. Installation :books:
-2. Default training :books:
-3. Train custom data :books:
-4. Hyperparameters :books:
-5. Augmentation
-6. Things that are different from the article 
+1. [Installation](#installation)  
+2. [Default training](#default-training)  
+3. [Train custom data](https://github.com/ivankunyankin/quartznet-asr/issues/1) :books:
+4. [Hyperparameters](https://github.com/ivankunyankin/quartznet-asr/issues/2) :books:
+5. [Things that are different compared to the article](https://github.com/ivankunyankin/quartznet-asr/issues/3)
 
-## How to install
+## Installation :books:
 
 1. Clone the repository
 ``` 
@@ -33,26 +29,20 @@ git clone https://github.com/ivankunyankin/quartznet-asr.git
 cd quartznet-asr 
 ```
 
-2. Create and activate an environment 
+2. Create an environment  and install the dependencies
 ``` 
 python3 -m venv env 
 source env/bin/activate 
-```
-
-3. Install the dependencies 
-``` 
 pip3 install -r requirements.txt 
 ```
 
-## How to use
+## Default training :books:
 
 [(back to the top)](#quartznet)
 
 ### Training
 
-This guide shows training using LibriTTS dataset. However, the code can be easily adjusted to be trained with different data. More details [here](docs/data.md).
-
-Also, hyperparameters for training described [here](docs/hparams.md).
+This guide shows training QuartzNet5x5 model using LibriTTS dataset.
 
 1. Download the data from [here](https://openslr.org/60/) and unzip into ```LibriTTS``` folder.
 
@@ -64,24 +54,17 @@ python3 train.py
 Add ```--cache``` parameter to read the data into memory for faster training.  
 Add ```--from_checkpoint``` parameter to continue training from a checkpoint.
 
-The code can benifit from using single or multiple gpus on a single machine
-
-The code allows to continue training from a checkpoint that is especially conveniet when training using Google Colab or AWS spot instances. More details here
-
 ### Testing
 
-Run the following:
 ```
 python3 test.py
 ```
 
-With default settings specified in the ```config.yaml``` the code will test the trained model on test-clean part of LibriTTS
+The code will test the trained model on test-clean subset of LibriTTS.  
+It will print the resulting WER (word error rate) and CTC loss values as well as save intermediate logs in the logs directory
 
-It will print the resulting WER (word error rate) and CTC loss values in the terminal as well as save intermediate logs in the logs directory
+### Tensorboard
 
-5. Visualising training logs with Tensorboard
-
-To visualise training logs run the following command:
 ```
 tensorboard --logdir logs
 ```
@@ -96,4 +79,4 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 [(back to the top)](#quartznet)
 
-I found inspiration for TextTransform class greedy decoder in [this](https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch) post.
+I found inspiration for TextTransform class and Greedy decoder in [this](https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch) post.
