@@ -1,10 +1,10 @@
 ## QuartzNet
 
 Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.10261.pdf). <!-- You can choose between three different version of the model: ```5x5, 10x5, 15x5```. For details refer to the article. -->
-<!-- 
+
 <p align="center"><img width="250" src="https://developer-blogs.nvidia.com/wp-content/uploads/2019/12/QuartzNet-architecture.png"></a></p>
 
-<div align="center"><i><small>QuartzNet BxR architecture</small></i></div> -->
+<div align="center"><i><small>QuartzNet BxR architecture</small></i></div>
 
 ### Features
 
@@ -12,9 +12,9 @@ Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.1026
 
 2. Easily customisable  
 
-3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green)  
+3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green).  
 
-4. Suitable for training in ![colab](https://img.shields.io/badge/-Google%20Colab-orange) and ![aws](https://img.shields.io/badge/-AWS-orange) spot instances as it allows to continue training after a break-down.
+4. Suitable for training in ![colab](https://img.shields.io/badge/-Google%20Colab-orange) and ![aws](https://img.shields.io/badge/-AWS-orange) spot instances as it allows to continue training after a break-down.  
 
 ### Table of contents
 
