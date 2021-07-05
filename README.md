@@ -1,97 +1,99 @@
-# Documentation
+## QuartzNet
 
+Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.10261.pdf). <!-- You can choose between three different version of the model: ```5x5, 10x5, 15x5```. For details refer to the article. -->
 
-This branch contains code for:
+<!-- <p align="center"><img width="300" src="https://developer-blogs.nvidia.com/wp-content/uploads/2019/12/QuartzNet-architecture.png"></a></p> -->
+<!-- 
+<div align="center"><i><small>QuartzNet BxR architecture</small></i></div> -->
 
-- training a QuartzNet5x5 encoder
-- testing a QuartzNet5x5 encoder
-- training a ConVoice decoder
-- making voice conversion predictions
+### Features
 
+1. Allows to choose between three different model sizes: ![5x5](https://img.shields.io/badge/-5x5-blue), ![10x5](https://img.shields.io/badge/-10x5-blue), ![15x5](https://img.shields.io/badge/-15x5-blue). For details refer to the article.
 
-## Before training
+2. Easily customisable
 
-1. Create and activate an environment:
-```
-python3 -m venv env
-```
-```
-source env/bin/activate
-```
-2. Install requirements:
-```
-pip install -r requirements.txt
-```
+3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green)
 
-3. Calculate mean and std of the data before training (optional)
-To calculate stats run:
-```
-python3 count_stats.py
+4. Suitable for training in ![colab](https://img.shields.io/badge/-Google%20Colab-orange) and ![aws](https://img.shields.io/badge/-AWS-orange) spot instances as it allows to continue training after a break-down.
 
-positional arguments:
-	conf 				(str) Path to the configuration file
-	folders				(str) A list of folders containing data
-```
-Mean and Std will be used for data normalization
+### Table of contents
 
-4. Adjust training parameters if the configuration file if needed
+1. Installation :books:
+2. Default training :books:
+3. Train custom data :books:
+4. Hyperparameters :books:
+5. Augmentation
+6. Things that are different from the article 
 
-Data files should have the following structure in order to be parsed correctly
-```
-100_121669_000001_000000.flac
-100_121669_000001_000000.transcription.txt
+## How to install
+
+1. Clone the repository
+``` 
+git clone https://github.com/ivankunyankin/quartznet-asr.git
+cd quartznet-asr 
 ```
 
-## Train a QuartzNet5x5 encoder (multiple gpus)
-
-Run the following (requires a gpu):
+2. Create and activate an environment 
+``` 
+python3 -m venv env 
+source env/bin/activate 
 ```
-python3 train_encoder.py
 
-positional arguments:
-  conf                  (str) Path to the configuration file
-  from checkpoint		(action) Can be used to proceed training after a break
-  cash					(action) Read data from memory during training
+3. Install the dependencies 
+``` 
+pip3 install -r requirements.txt 
 ```
-The training script can benifit from using multiple gpus on a single machine
 
-## Test the trained encoder
+## How to use
+
+[(back to the top)](#quartznet)
+
+### Training
+
+This guide shows training using LibriTTS dataset. However, the code can be easily adjusted to be trained with different data. More details [here](docs/data.md).
+
+Also, hyperparameters for training described [here](docs/hparams.md).
+
+1. Download the data from [here](https://openslr.org/60/) and unzip into ```LibriTTS``` folder.
+
+2. Run the following to start training:
+
+```
+python3 train.py
+```
+Add ```--cache``` parameter to read the data into memory for faster training.  
+Add ```--from_checkpoint``` parameter to continue training from a checkpoint.
+
+The code can benifit from using single or multiple gpus on a single machine
+
+The code allows to continue training from a checkpoint that is especially conveniet when training using Google Colab or AWS spot instances. More details here
+
+### Testing
 
 Run the following:
 ```
-python3 train_encoder.py
-
-positional arguments:
-  conf                  (str) Path to the configuration file
-```
-It will pring the resulting WER and CTC loss in the terminal as well as save intermediate logs in the logs directory
-
-## Train a ConVoice decoder
-
-Run the following:
-```
-python3 train_decoder.py
-
-positional arguments:
-  conf                  (str) Path to the configuration file
-  from checkpoint		(action) Can be used to proceed training after a break
-  cash					(action) Read data from memory during training
+python3 test.py
 ```
 
-## Make an inference for the decoder
+With default settings specified in the ```config.yaml``` the code will test the trained model on test-clean part of LibriTTS
 
-To make voice conversion predictions, open ```predict.py``` and specify the list of ```.flac``` files you would like to convert and the list of speakers you would like to use for conversion (ex. ["libritts_spkr_100", "libritts_spkr_101"])
+It will print the resulting WER (word error rate) and CTC loss values in the terminal as well as save intermediate logs in the logs directory
 
-After that run the script
-It will save the reconstructed files in the ```out_dir``` specified in the configuration file
+5. Visualising training logs with Tensorboard
 
-## Visualise training logs with Tensorboard
+To visualise training logs run the following command:
+```
+tensorboard --logdir logs
+```
 
-To visualise training logs for the encoder run the following command:
-```
-tensorboard --logdir logs/encoder
-```
-To visualise logs for the decoder run:
-```
-tensorboard --logdir logs/decoder
-```
+## Contribution
+
+[(back to the top)](#quartznet)
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change
+
+## Acknowledgements
+
+[(back to the top)](#quartznet)
+
+I found inspiration for TextTransform class greedy decoder in [this](https://www.assemblyai.com/blog/end-to-end-speech-recognition-pytorch) post.
