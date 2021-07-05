@@ -8,11 +8,11 @@ Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.1026
 
 ### Features
 
-1. Allows to choose between three different model sizes: ![5x5](https://img.shields.io/badge/-5x5-blue), ![10x5](https://img.shields.io/badge/-10x5-blue), ![15x5](https://img.shields.io/badge/-15x5-blue). For details refer to the article.
+1. Allows to choose between three different model sizes: ![5x5](https://img.shields.io/badge/-5x5-blue), ![10x5](https://img.shields.io/badge/-10x5-blue), ![15x5](https://img.shields.io/badge/-15x5-blue). For details refer to the article.  
 
-2. Easily customisable
+2. Easily customisable  
 
-3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green)
+3. Allows training using a cpu, single or multiple ![gpu](https://img.shields.io/badge/-gpus-green)  
 
 4. Suitable for training in ![colab](https://img.shields.io/badge/-Google%20Colab-orange) and ![aws](https://img.shields.io/badge/-AWS-orange) spot instances as it allows to continue training after a break-down.
 
