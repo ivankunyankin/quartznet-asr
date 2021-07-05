@@ -21,7 +21,7 @@ Lightweight PyTorch implementation of QuartzNet (https://arxiv.org/pdf/1910.1026
 4. [Hyperparameters](https://github.com/ivankunyankin/quartznet-asr/issues/2) :books:
 5. [Things that are different compared to the article](https://github.com/ivankunyankin/quartznet-asr/issues/3)
 
-## Installation :books:
+## Installation
 
 1. Clone the repository
 ``` 
@@ -36,7 +36,7 @@ source env/bin/activate 
 pip3 install -r requirements.txt 
 ```
 
-## Default training :books:
+## Default training
 
 [(back to the top)](#quartznet)
 
