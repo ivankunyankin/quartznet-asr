@@ -9,10 +9,9 @@ from utils import TextTransform, audio_to_mel, augment
 
 class LibriDataset(Dataset):
 
-    def __init__(self, config, set, cache):
+    def __init__(self, config, set):
         super(LibriDataset, self).__init__()
 
-        self.cache = cache
         self.config = config
         self.parameters = config[set]
 
@@ -35,22 +34,7 @@ class LibriDataset(Dataset):
             data = f.readlines()
         data = [line.strip().split() for line in data]
 
-        if self.cache:
-
-            self.collection = []
-
-            for sample in data:
-                audio, transcript = sample
-                audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
-                with open(transcript, "r") as text:
-                    transcript = text.read()
-                transcript = transcript.lower()
-                transcript = re.sub("[^'A-Za-z0-9 ]+", '', transcript)
-                transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
-
-                self.collection.append([audio, transcript])
-        else:
-            self.collection = data
+        self.collection = data
 
     def __len__(self):
         return len(self.collection)
@@ -58,13 +42,12 @@ class LibriDataset(Dataset):
     def __getitem__(self, item):
         audio, transcript = self.collection[item]
 
-        if not self.cache:
-            audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
-            with open(transcript, "r") as text:
-                transcript = text.read()
-                transcript = transcript.lower()
-                transcript = re.sub("[^'A-Za-z0-9 ]+", '', transcript)
-                transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
+        audio, _ = librosa.load(audio, sr=self.config["spec_params"]["sr"])
+        with open(transcript, "r") as text:
+            transcript = text.read()
+            transcript = transcript.lower()
+            transcript = re.sub("[^'A-Za-z0-9 ]+", '', transcript)
+            transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
 
         # apply time stretch
         if self.parameters.get("apply_speed_pertrubation", None):

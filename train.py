@@ -30,7 +30,7 @@ random.seed(0)
 
 class Trainer:
 
-    def __init__(self, config, rank, world_size, from_checkpoint, cache):
+    def __init__(self, config, rank, world_size, from_checkpoint):
 
         self.device = rank
         self.world_size = world_size
@@ -43,8 +43,8 @@ class Trainer:
         self.use_onecyclelr = config["use_onecyclelr"]
 
         # Data
-        self.train_set = LibriDataset(config, "train", cache)
-        self.val_set = LibriDataset(config, "val", cache)
+        self.train_set = LibriDataset(config, "train")
+        self.val_set = LibriDataset(config, "val")
         self.train_loader = self.loader(self.train_set)
         self.val_loader = self.loader(self.val_set)
         self.processor = TextTransform()
@@ -321,12 +321,12 @@ def init_process(rank, size, backend="nccl"):
     dist.init_process_group(backend, rank=rank, world_size=size)
 
 
-def train_dist(rank, world_size, config, from_checkpoint, cache):
+def train_dist(rank, world_size, config, from_checkpoint):
 
     init_process(rank, world_size)
     print(f"Rank {rank}/{world_size} training process initialized.\n")
 
-    trainer = Trainer(config, rank, world_size, from_checkpoint, cache)
+    trainer = Trainer(config, rank, world_size, from_checkpoint)
     dist.barrier()
     print(f"Rank {rank}/{world_size} initialised trainer.\n")
 
@@ -338,24 +338,22 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--conf', default="config.yml", help='Path to the configuration file')
     parser.add_argument('--from_checkpoint', action="store_true", help='Continue training from the last checkpoint')
-    parser.add_argument('--cache', action="store_true", help='Cache waveforms and transcirpts into memory')
     args = parser.parse_args()
 
     config = yaml.safe_load(open(args.conf))
     from_checkpoint = args.from_checkpoint
-    cache = args.cache
 
     world_size = torch.cuda.device_count()
 
     if world_size > 1:
         mp.spawn(train_dist,
-                 args=(world_size, config, from_checkpoint, cache),
+                 args=(world_size, config, from_checkpoint),
                  nprocs=world_size,
                  join=True)
 
     else:
         device = "gpu" if torch.cuda.is_available() else "cpu"
-        trainer = Trainer(config, rank=device, world_size=None, from_checkpoint=from_checkpoint, cache=cache)
+        trainer = Trainer(config, rank=device, world_size=None, from_checkpoint=from_checkpoint)
         print("Initialised trainer")
         print("Training...")
         trainer.train()

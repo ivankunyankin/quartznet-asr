@@ -50,8 +50,7 @@ This guide shows training QuartzNet5x5 model using LibriTTS dataset.
 
 ```
 python3 train.py
-```
-Add ```--cache``` parameter to read the data into memory for faster training.  
+``` 
 Add ```--from_checkpoint``` parameter to continue training from a checkpoint.
 
 ### Testing
