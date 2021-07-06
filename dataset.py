@@ -50,8 +50,8 @@ class LibriDataset(Dataset):
             transcript = torch.tensor(self.label_encoder.text_to_int(transcript), dtype=torch.long)
 
         # apply time stretch
-        if self.parameters.get("apply_speed_pertrubation", None):
-            limit = self.config.get("speed_pertrubation", 0.1)
+        if self.parameters.get("apply_speed_perturbation", None):
+            limit = self.config.get("speed_perturbation", 0.1)
             rate = np.random.uniform(low=1-limit, high=1+limit)
             audio = librosa.effects.time_stretch(audio, rate)
 

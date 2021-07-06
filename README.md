@@ -51,7 +51,7 @@ This guide shows training QuartzNet5x5 model using LibriTTS dataset.
 ```
 python3 train.py
 ``` 
-Add ```--from_checkpoint``` parameter to continue training from a checkpoint.
+Add ```--from_checkpoint``` flag to continue training from a checkpoint.
 
 ### Testing
 
