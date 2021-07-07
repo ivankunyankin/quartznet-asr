@@ -5,13 +5,13 @@ model: quartznet5x5  # ["quartznet5x5", "quartznet10x5", "quartznet15x5"]
 # Datasets
 train:
   data_list: assets/train_data.txt
-  data_dirs: ["LibriTTS/dev-clean"]
+  data_dirs: ["LibriTTS/train-clean-360"]
   apply_speed_perturbation: True
   apply_masking: True
 
 val:
   data_list: assets/val_data.txt
-  data_dirs: ["LibriTTS/test-clean"]
+  data_dirs: ["LibriTTS/dev-clean"]
 
 test:
   weights: checkpoints/model.pt
@@ -20,8 +20,8 @@ test:
 
 # Training
 max_length: 12  # maximum file length in seconds. Can be used to avoid OOM (out-of-memory) error
-epochs: 3
-batch_size: 1
+epochs: 100
+batch_size: 32
 learning_rate: 5e-4  # constant learning rate value. Omitted if using OneCycleLR
 weight_decay: 0.0001
 checkpoint_dir: checkpoints/
@@ -43,10 +43,10 @@ masking:
   time_masking: 6
 
 spec_params:
-  sr: 16000
-  n_mels: 80
-  n_fft: 1024
-  win_length: 1024
-  hop_length: 256
+  sr: 22050
+  n_mels: 64
+  n_fft: 320
+  win_length: 320
+  hop_length: 160
 
 stats: assets/stats.npy  # file with the mean and std of the data

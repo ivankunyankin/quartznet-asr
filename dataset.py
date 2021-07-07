@@ -22,7 +22,7 @@ class LibriDataset(Dataset):
 
         if self.config["normalize"]:
             if os.path.exists(self.config["stats"]):
-                stats = torch.from_numpy(np.load(self.config["stats"]))
+                stats = torch.from_numpy(np.load(self.config["stats"])).permute(1, 0)
                 if stats.shape[0] == 1:
                     self.mean = stats[0, 0]
                     self.std = stats[0, 1]

@@ -37,7 +37,7 @@ def main(folders, config, per_channel):
     mean = (channels_sum/num_files)
     std = (channels_sqrd_sum/num_files - mean**2)**0.5
 
-    np.save(config["stats"], torch.cat([mean.unsqueeze(0), std.unsqueeze(0)], dim=0).unsqueeze(0).numpy())
+    np.save(config["stats"], torch.cat([mean.unsqueeze(0), std.unsqueeze(0)], dim=0).numpy())
 
 
 if __name__ == "__main__":

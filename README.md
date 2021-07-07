@@ -42,9 +42,18 @@ pip3 install -r requirements.txt 
 
 ### Training
 
-This guide shows training QuartzNet5x5 model using LibriTTS dataset.
+This guide shows training QuartzNet5x5 model using a part of LibriTTS dataset.
 
-1. Download the data from [here](https://openslr.org/60/) and unzip into ```LibriTTS``` folder.
+1. Download the data by running the following:
+```
+assets/data.sh
+```
+If you encounter an error, give the execute permission to your script and rerun the above command: ```chmod +x assets/data.sh```
+
+The script will download and unzip the following subsets of LibriTTS: train-clean-360 (for training), dev-clean (for validation), test-clean (for testing)
+
+Warning. This subset of the dataset requires around 30 Gb of storage space.
+
 
 2. Run the following to start training:
 
