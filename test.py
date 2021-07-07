@@ -34,7 +34,7 @@ class Tester:
         self.weights = hparams["test"]["weights"]
 
         # Data
-        self.dataset = LibriDataset(config, "test", cache=True)
+        self.dataset = LibriDataset(config, "test")
         self.loader = self.loader(self.dataset)
         self.processor = TextTransform()
 
