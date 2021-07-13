@@ -352,7 +352,7 @@ def main():
                  join=True)
 
     else:
-        device = "gpu" if torch.cuda.is_available() else "cpu"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         trainer = Trainer(config, rank=device, world_size=None, from_checkpoint=from_checkpoint)
         print("Initialised trainer")
         print("Training...")
