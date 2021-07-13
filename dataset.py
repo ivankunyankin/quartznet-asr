@@ -18,6 +18,7 @@ class LibriDataset(Dataset):
         self.label_encoder = TextTransform()
 
         if not os.path.exists(self.parameters["data_list"]):
+            print(f"=> List of {set}ing data not found. Generating")
             self.create_data_list()
 
         if self.config["normalize"]:
