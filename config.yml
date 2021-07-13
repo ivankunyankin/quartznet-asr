@@ -43,10 +43,10 @@ masking:
   time_masking: 6
 
 spec_params:
-  sr: 22050
-  n_mels: 64
-  n_fft: 320
-  win_length: 320
-  hop_length: 160
+  sr: 16000
+  n_mels: 80
+  n_fft: 1024
+  win_length: 1024
+  hop_length: 256
 
-stats: assets/stats.npy  # file with the mean and std of the data
+stats: assets/stats_80.npy  # file with the mean and std of the data
