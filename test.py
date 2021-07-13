@@ -29,9 +29,8 @@ class Tester:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # Parameters
-        hparams = config["encoder"]
-        self.batch_size = hparams["batch_size"]
-        self.weights = hparams["test"]["weights"]
+        self.batch_size = config["batch_size"]
+        self.weights = config["test"]["weights"]
 
         # Data
         self.dataset = LibriDataset(config, "test")
@@ -42,15 +41,15 @@ class Tester:
         self.model = create_model(
             model=config["model"],
             in_channels=config["spec_params"]["n_mels"],
-            out_channels=len(self.processor.char_map)
+            out_channels=len(self.processor.char_map) + 1
         )
         self.model.to(self.device)
-        self.model.module.load_state_dict(torch.load(self.weights, map_location=self.device))
+        self.load_checkpoint(self.weights, map_location=self.device)
         self.criterion = nn.CTCLoss(blank=28)
 
         # Logging
         now = datetime.datetime.now()
-        path = os.path.join(hparams["log_dir"], now.strftime("%Y:%m:%d_%H:%M:%S"))
+        path = os.path.join(config["log_dir"], now.strftime("%Y:%m:%d_%H:%M:%S"))
         self.writer = SummaryWriter(os.path.join(path, "test"))
 
     def test(self):
@@ -62,7 +61,7 @@ class Tester:
         num_batches = 0
 
         with torch.no_grad():
-            for batch_idx, (specs, transcripts, input_lengths, label_length, _) in enumerate(loop):
+            for batch_idx, (specs, transcripts, input_lengths, label_length) in enumerate(loop):
 
                 clear_output(wait=True)
                 loop.set_description(f"Test")
@@ -102,7 +101,10 @@ class Tester:
         return DataLoader(dataset, batch_size=self.batch_size, collate_fn=custom_collate)
 
     def load_checkpoint(self, path, map_location):
-        self.model.module.load_state_dict(torch.load(path, map_location=map_location))
+        try:
+            self.model.module.load_state_dict(torch.load(path, map_location=map_location))
+        except torch.nn.modules.module.ModuleAttributeError:
+            self.model.load_state_dict(torch.load(path, map_location=map_location))
 
 
 def main():
@@ -114,6 +116,8 @@ def main():
     config = yaml.safe_load(open(args.conf))
 
     tester = Tester(config)
+    print("=> Initialised trainer")
+    print("=> Training...")
     tester.test()
 
 
