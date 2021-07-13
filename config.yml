@@ -16,7 +16,7 @@ val:
 test:
   weights: checkpoints/model.pt
   data_list: assets/test_data.txt
-  data_dirs: [ "LibriTTS/test_clean" ]
+  data_dirs: [ "LibriTTS/test-clean" ]
 
 # Training
 max_length: 12  # maximum file length in seconds. Can be used to avoid OOM (out-of-memory) error

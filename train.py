@@ -67,21 +67,23 @@ class Trainer:
             self.scheduler = self.oneCycleLR(config)
 
         if from_checkpoint:
+            if os.path.exists(os.path.join(self.checkpoint_dir, "model_last.pt")):
+                if self.world_size:
+                    map_location = {'cuda:%d' % 0: 'cuda:%d' % self.device}
+                    self.load_checkpoint(self.checkpoint_dir, map_location)
+                    print(f"=> Rank {self.device}. Loaded checkpoint")
+                else:
+                    self.load_checkpoint(self.checkpoint_dir, map_location=self.device)
+                    print("=> Loaded checkpoint")
 
-            if self.world_size:
-                map_location = {'cuda:%d' % 0: 'cuda:%d' % self.device}
-                self.load_checkpoint(self.checkpoint_dir, map_location)
-                print(f"=> Rank {self.device}. Loaded checkpoint")
-            else:
-                self.load_checkpoint(self.checkpoint_dir, map_location=self.device)
-                print("=> Loaded checkpoint")
-
-            with open(os.path.join(self.checkpoint_dir, "last_epoch.txt"), "r") as f:
-                last_epoch = int(f.read())
-                last_batch_idx = last_epoch * len(self.train_loader) - 1
-                self.start_epoch = last_epoch + 1
-                if self.use_onecyclelr:
-                    self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
+                with open(os.path.join(self.checkpoint_dir, "last_epoch.txt"), "r") as f:
+                    last_epoch = int(f.read())
+                    last_batch_idx = last_epoch * len(self.train_loader) - 1
+                    self.start_epoch = last_epoch + 1
+                    if self.use_onecyclelr:
+                        self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
+        else:
+            print("* Checkpoint not found. Starting training from scratch.")
 
         if not self.device == "cpu":
             self.scaler = torch.cuda.amp.GradScaler()
@@ -354,8 +356,8 @@ def main():
     else:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         trainer = Trainer(config, rank=device, world_size=None, from_checkpoint=from_checkpoint)
-        print("Initialised trainer")
-        print("Training...")
+        print("=> Initialised trainer")
+        print("=> Training...")
         trainer.train()
 
 
