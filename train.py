@@ -82,8 +82,8 @@ class Trainer:
                     self.start_epoch = last_epoch + 1
                     if self.use_onecyclelr:
                         self.scheduler = self.oneCycleLR(config, last_epoch=last_batch_idx)
-        else:
-            print("* Checkpoint not found. Starting training from scratch.")
+            else:
+                print("* Checkpoint not found")
 
         if not self.device == "cpu":
             self.scaler = torch.cuda.amp.GradScaler()
