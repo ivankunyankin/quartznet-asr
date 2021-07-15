@@ -28,6 +28,7 @@ checkpoint_dir: checkpoints/
 log_dir: logs/
 use_onecyclelr: True
 normalize: True
+num_workers: 2  # dataloader's
 
 # OneCycleLR parameters
 # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.OneCycleLR.html#torch.optim.lr_scheduler.OneCycleLR

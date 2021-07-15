@@ -41,6 +41,7 @@ class Trainer:
         self.start_epoch = 1
         self.epochs = config["epochs"] + 1
         self.use_onecyclelr = config["use_onecyclelr"]
+        self.num_workers = config["num_workers"]
 
         # Data
         self.train_set = LibriDataset(config, "train")
@@ -279,7 +280,7 @@ class Trainer:
             sampler = DistributedSampler(dataset, rank=self.device, num_replicas=self.world_size)
             loader = DataLoader(dataset, batch_size=self.batch_size, sampler=sampler, collate_fn=custom_collate)
         else:
-            loader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=custom_collate)
+            loader = DataLoader(dataset, batch_size=self.batch_size, collate_fn=custom_collate, num_workers=self.num_workers)
 
         return loader
 
