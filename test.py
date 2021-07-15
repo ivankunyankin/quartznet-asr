@@ -92,8 +92,8 @@ class Tester:
                 self.writer.add_text("target texts", decoded_targets[rand_idx], global_step=batch_idx)
                 self.writer.add_scalar("loss", loss, global_step=batch_idx)
 
-        loss = losses / num_batches
-        error = wers / num_batches
+        loss = round((float(losses) / num_batches), 3)
+        error = round((float(wers) / num_batches), 3)
 
         print(f"=> Test completed: WER = {error}, CTCloss = {loss}")
 
