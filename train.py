@@ -2,6 +2,7 @@ import os
 import yaml
 import torch
 import random
+import shutil
 import datetime
 import numpy as np
 import torch.nn as nn
@@ -132,9 +133,7 @@ class Trainer:
                     best_loss = loss
 
                 if epoch == self.epochs - 1:
-                    self.move_checkpoints()
-                    if os.path.exists(self.last_epoch_path):
-                        os.remove(self.last_epoch_path)
+                    self.copy_checkpoints()
                 else:
                     with open(self.last_epoch_path, "w") as f:
                         f.write(str(epoch))
@@ -305,15 +304,15 @@ class Trainer:
 
         self.optimizer.load_state_dict(torch.load(os.path.join(path, "optimizer_last.pt"), map_location=map_location))
 
-    def move_checkpoints(self):
+    def copy_checkpoints(self):
 
         if not os.path.exists(self.checkpoint_path):
             os.mkdir(self.checkpoint_path)
 
-        os.rename(os.path.join(self.checkpoint_dir, "model_last.pt"), os.path.join(self.checkpoint_path, "model_last.pt"))
-        os.rename(os.path.join(self.checkpoint_dir, "model_best.pt"), os.path.join(self.checkpoint_path, "model_best.pt"))
-        os.rename(os.path.join(self.checkpoint_dir, "optimizer_last.pt"), os.path.join(self.checkpoint_path, "optimizer_last.pt"))
-        os.rename(os.path.join(self.checkpoint_dir, "optimizer_best.pt"), os.path.join(self.checkpoint_path, "optimizer_best.pt"))
+        shutil.copyfile(os.path.join(self.checkpoint_dir, "model_last.pt"), os.path.join(self.checkpoint_path, "model_last.pt"))
+        shutil.copyfile(os.path.join(self.checkpoint_dir, "model_best.pt"), os.path.join(self.checkpoint_path, "model_best.pt"))
+        shutil.copyfile(os.path.join(self.checkpoint_dir, "optimizer_last.pt"), os.path.join(self.checkpoint_path, "optimizer_last.pt"))
+        shutil.copyfile(os.path.join(self.checkpoint_dir, "optimizer_best.pt"), os.path.join(self.checkpoint_path, "optimizer_best.pt"))
 
 
 def init_process(rank, size, backend="nccl"):
