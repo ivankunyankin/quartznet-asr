@@ -14,7 +14,7 @@ val:
   data_dirs: ["LibriTTS/dev-clean"]
 
 test:
-  weights: checkpoints/model.pt
+  weights: checkpoints/model_best.pt
   data_list: assets/test_data.txt
   data_dirs: [ "LibriTTS/test-clean" ]
 
