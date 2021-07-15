@@ -39,15 +39,15 @@ pct_start: 0.3
 # Augmentation
 speed_perturbation: 0.1
 masking:
-  chunk_size: 30  # size of each spectrogram segment (time axis) to apply augmentation to. Set equal to -1 to apply original pytorch's masking
+  chunk_size: 60  # size of each spectrogram segment (time axis) to apply augmentation to. Set equal to -1 to apply original pytorch's masking
   freq_masking: 10
-  time_masking: 6
+  time_masking: 10
 
 spec_params:
-  sr: 16000
-  n_mels: 80
-  n_fft: 1024
-  win_length: 1024
-  hop_length: 256
+  sr: 22050
+  n_mels: 64
+  n_fft: 320
+  win_length: 320
+  hop_length: 160
 
-stats: assets/stats_80.npy  # file with the mean and std of the data
+stats: assets/stats_64.npy  # file with the mean and std of the data
