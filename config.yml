@@ -6,7 +6,6 @@ model: quartznet5x5  # ["quartznet5x5", "quartznet10x5", "quartznet15x5"]
 train:
   data_list: assets/train_data.txt
   data_dirs: ["LibriTTS/train-clean-360"]
-  apply_speed_perturbation: True
   apply_masking: True
 
 val:
@@ -27,7 +26,6 @@ weight_decay: 0.0001
 checkpoint_dir: checkpoints/
 log_dir: logs/
 use_onecyclelr: True
-normalize: True
 num_workers: 2  # dataloader's
 
 # OneCycleLR parameters
@@ -37,7 +35,6 @@ div_factor: 25.0
 pct_start: 0.3
 
 # Augmentation
-speed_perturbation: 0.1
 masking:
   chunk_size: 60  # size of each spectrogram segment (time axis) to apply augmentation to. Set equal to -1 to apply original pytorch's masking
   freq_masking: 10
@@ -49,5 +46,3 @@ spec_params:
   n_fft: 320
   win_length: 320
   hop_length: 160
-
-stats: assets/stats_64.npy  # file with the mean and std of the data
