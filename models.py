@@ -18,9 +18,16 @@ class QuartzNet(nn.Module):
         self.B = nn.ModuleList([])
 
         for i in range(5):
+
+            num_in = block_channels[i]
+            num_out = block_channels[i+1]
             pad = block_k[i] // 2
+            k = block_k[i]
+
+            self.B.append(JasperBlock(num_in, num_out, k, pad))
+
             for rep in range(repeat):
-                self.B.append(JasperBlock(block_channels[i], block_channels[i+1], block_k[i], pad))
+                self.B.append(JasperBlock(num_out, num_out, k, pad))
 
         self.C2 = nn.Sequential(nn.Conv1d(512, 512, kernel_size=87, padding=86, dilation=2),
                                 nn.BatchNorm1d(512, eps=0.001, momentum=0.1, affine=True, track_running_stats=True),
